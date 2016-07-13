@@ -22,7 +22,7 @@ export_top_dir = "Rekordbox_Export"
 #Where is the Rekodbox XML?
 xml_file = os.getenv("HOME") + "/Documents/rb_test.xml"
 #Dry run only - if set to 0, no files are written. If set to 1, files will be copied.
-removed_before_flight = 0
+removed_before_flight = 1
 #Prefix track number for each playlist?
 #Each copied track filename will prepended with number (01_ , 02_, 03_) to maintain playlist position
 enable_track_counter = 1
@@ -80,7 +80,13 @@ def list_single_playlist(xml_root,playlist_name):
 				print('---TRACK END---')
 
 
-
+def add_zero(track_number):
+	if track_number <= 9:
+		track_number = "0" + str(track_number)
+		print(int(track_counter))
+		return int(track_number)
+	else:
+		return track_number
 
 
 def get_playlists(xml_root):
@@ -118,19 +124,20 @@ def get_playlists(xml_root):
 
 def copy_file(file,source,destination,counter,safe):
 	delimiter = "/"
+	counter_z = str(counter).zfill(2)
 	global enable_track_counter
 	if removed_before_flight == 0:
 		logging.info('ONLY PRINTING')
-		logging.debug('Track number: ' + str(counter))
+		logging.debug('Track number: ' + str(counter_z))
 		logging.debug('Track file: ' + file)
 		logging.debug('Copy from: ' + source + delimiter + file)
 		logging.debug('Destination dir: ' + destination)
-		print('Track number: ' + str(counter))
+		print('Track number: ' + str(counter_z))
 		print('Track file: ' + file)
 		print('Copy from: ' + source + delimiter + file)
 		print('Destination dir: ' + destination)
 		if enable_track_counter == 1:
-			final_filename = destination + delimiter + str(counter) + "_" + file
+			final_filename = destination + delimiter + str(counter_z) + "_" + file
 			print('Copy to: ' + final_filename )
 			logging.debug('Copy to: %s', final_filename )
 		else:
@@ -139,18 +146,18 @@ def copy_file(file,source,destination,counter,safe):
 			logging.debug('Copy to: %s', final_filename )
 	elif removed_before_flight == 1:
 		logging.info('WRITING FILES')
-		logging.debug('Track number: ' + str(counter))
+		logging.debug('Track number: ' + str(counter_z))
 		logging.debug('Track file: ' + file)
 		logging.debug('Copy from: ' + source + delimiter + file)
 		logging.debug('Destination dir: ' + destination)
-		print('Track number: ' + str(counter))
+		print('Track number: ' + str(counter_z))
 		print('Track file: ' + file)
 		print('Copy from: ' + source + delimiter + file)
 		print('Destination dir: ' + destination)
 		if enable_track_counter == 1:
 			try:
 				final_source = source + delimiter + file
-				final_filename = destination + delimiter + str(counter) + "_" + file
+				final_filename = destination + delimiter + str(counter_z) + "_" + file
 				shutil.copy(final_source, final_filename)
 				print('Copy to: ' + final_filename )
 				logging.debug('Copy to: %s', final_filename )
