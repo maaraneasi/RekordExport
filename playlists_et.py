@@ -1,27 +1,86 @@
+##Marek Pleskac 2016
+
+
 import xml.etree.ElementTree as ET
 import sys
 import os
 import shutil
 import urllib2
 import logging
+from os.path import expanduser
 
-logging.basicConfig(filename='PlaylistExport.log',level=logging.DEBUG)
+#If having issues, comment the following line
+logging.basicConfig(filename='PlaylistExport.log',level=logging.WARNING)
+#...and uncomment this one below:
+#logging.basicConfig(filename='PlaylistExport.log',level=logging.DEBUG)
 
-#Kde vytvorit slozku?
-export_root_path = "/Users/maara/Desktop/"
-#Nazev slozky
+
+#Path to the export parent dir
+export_root_path = os.getenv("HOME") + "/Desktop/"
+#Export directory name
 export_top_dir = "Rekordbox_Export"
-#Cesta k Rekodbox XML
-xml_file = "/Users/maara/Documents/rb_test.xml"
-#Kopirovat nebo nekopirovat? (1 ANO, 0 NE)
-removed_before_flight = 1
-#Cislovat tracky ve slozce?
+#Where is the Rekodbox XML?
+xml_file = os.getenv("HOME") + "/Documents/rb_test.xml"
+#Dry run only - if set to 0, no files are written. If set to 1, files will be copied.
+removed_before_flight = 0
+#Prefix track number for each playlist?
+#Each copied track filename will prepended with number (01_ , 02_, 03_) to maintain playlist position
 enable_track_counter = 1
 
-#Sem nehrabat!
+#Don't touch this one.
 current_directory = ""
 export_dir = export_root_path+export_top_dir
 track_counter = 0
+
+def print_structure(xml_root):
+	playlist_arr = []
+	for elem in xml_root.iter('NODE'):
+		for playlist in elem.iterfind('NODE[@Type="1"]'):
+			playlist_arr.append(playlist.attrib['Name'])
+	playlist_count = len(playlist_arr)
+	print(str(playlist_count) + ' playlists found:')
+	counter = 0
+	for i in playlist_arr:
+		print(str(counter) + " - " + i)
+		counter = counter +1
+	print("E - Return")
+	playlist_selector(playlist_arr)
+	return
+
+
+def playlist_selector(playlist_array):
+	user_choice = raw_input("Select playlist number to export: ")
+	if user_choice =='E' or user_choice == 'e':
+		main_menu()
+	else:
+		try:
+			user_choice_check = int(user_choice)
+			print("Playlist chosen: " + playlist_array[int(user_choice)])
+			list_single_playlist(xml_file,playlist_array[int(user_choice)])
+		except ValueError:
+			print("Not valid playlist number")
+
+def list_single_playlist(xml_root,playlist_name):
+	print('Searching: ' + playlist_name)
+	for elem in xml_root.iter('NODE'):
+		for playlist in elem.iterfind('NODE[@Name="%s"]' % playlist_name):
+			print('Playlist: ' + playlist.attrib['Name'])
+			logging.debug('Single playlist found: %s', playlist.attrib['Name'])
+			track_counter = 0
+			logging.debug('Counter reset')
+			playlist_path = set_playlist_path(playlist_name,current_directory)
+			for playlist_track in playlist:
+				print('---TRACK START---')
+				track_counter = track_counter + 1
+				file_name = get_track_from_collection(playlist_track.attrib['Key'])[0]
+				file_current_path = get_track_from_collection(playlist_track.attrib['Key'])[1]
+				copy_file(file_name,file_current_path,playlist_path,track_counter,0)
+				#print('Track ID :' + get_tracks())
+				#get_track_from_collection(get_tracks(playlist_track))
+				print('---TRACK END---')
+
+
+
 
 
 def get_playlists(xml_root):
@@ -31,13 +90,17 @@ def get_playlists(xml_root):
 			if int(playlist_type) == 0:
 				playlist_dir_name = node.attrib['Name']
 				print('Directory :' + node.attrib['Name'])
+				logging.debug('Directory: %s', node.attrib['Name'])
 				global current_directory
 				current_directory = playlist_dir_name
 				print('Current DIR: ' + current_directory)
+				logging.debug('Current DIR: %s', current_directory)
 				track_counter = 0
 				print('Counter reset!')
+				logging.debug('Counter reset')
 			elif int(playlist_type) == 1:
 				track_counter = 0
+				logging.debug('Counter reset')
 				playlist_name = node.attrib['Name']
 				print('Playlist: ' + node.attrib['Name'])
 				playlist_path = set_playlist_path(playlist_name,current_directory)
@@ -139,7 +202,10 @@ def set_playlist_path(playlist_name, current_directory):
 	return path
 
 def main():
-	get_playlists(open_rb_export())
+	#get_playlists(open_rb_export())
+	#print_structure(open_rb_export())
+	#list_single_playlist(open_rb_export(),'Akropole')
+	main_menu()
 
 def open_rb_export():
 	global xml_file
@@ -162,6 +228,26 @@ def create_export_dir():
 	if not os.path.exists(export_dir):
 		logging.info('Creating export directory %s', export_dir)
 		os.makedirs(export_dir)
+
+def main_menu():
+	logging.debug('Waiting for user input S or A')
+	user_choice = raw_input("Export [S]ingle or [A]ll playlists or [Q]uit?: ")
+	if user_choice == 'S' or user_choice == 's':
+		logging.debug('Main menu selection S')
+		print("Selected to export single playlist.")
+		print_structure(open_rb_export())
+	elif user_choice == 'A' or user_choice == 'a':
+		logging.debug('Main menu selection A')
+		double_check = raw_input("Selected to export all playlists. Are you sure? [yes|no]:")
+		if double_check == 'yes':
+			get_playlists(open_rb_export())
+		else:
+			main_menu()
+	elif user_choice == 'Q' or user_choice == 'q':
+		sys.exit()
+	else:
+		print("%s is an invalid option")
+		main_menu()
 
 
 if __name__ == "__main__":
